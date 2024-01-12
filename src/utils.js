@@ -3,6 +3,7 @@ const got = require("@/utils/got");
 const { outputPaths, githubRepository } = require("@/utils/config").value;
 const { writeFile } = require("@/utils/fs");
 const { logger, errorLogger } = require("@/utils/logger");
+const { log } = require("console");
 let path;
 let bookId;
 let csrfToken;
@@ -30,9 +31,13 @@ let headers;
 //         const quoteContent = [
 //           `\n[${item.segmentId}] ${list[0].quoteContent.trim()}\n`,
 //         ];
+       
 //         return [...quoteContent, ...content];
 //       } catch (err) {
-//         const msg = `---bookId: ${bookId} chapterName: ${chapterName}\n---response: ${response.body}\n`;
+//         console.log('错误章节: ', chapterName);
+//         console.log('错误消息: ', err.message);
+//         console.log('错误栈: ', err.stack);
+//         const msg = `---bookId: ${bookId} chapterName: ${chapterName}\n---response: ${response ? response.body : 'Response is undefined'}\n`;
 //         errorLogger.info(`${err} \n ${msg}`);
 //         return `\n[${item.segmentId}] invalid list\n`;
 //       }
@@ -40,6 +45,7 @@ let headers;
 //   );
 //   writeFile(path, out, chapterName);
 // };
+
 const processChapterReview = async (chapterId, chapterName) => {
   const reviewSummary = await getReviewSummary(chapterId);
 
@@ -50,8 +56,51 @@ const processChapterReview = async (chapterId, chapterName) => {
   await writeFile(path, outputArray, chapterName);
 };
 
-const getCatalog = async (bid, start, total, lock) => {
-  await assignmentGlobalVariables(bid);
+
+
+
+
+
+
+
+const retryRequest = async (url, options, maxAttempts = 3, delay = 1000) => {
+  let attempts = 0;
+  while (attempts < maxAttempts) {
+    try {
+      const response = await got(url, options);
+      return response;
+    } catch (err) {
+      attempts++;
+      console.log(`Attempt #${attempts} failed: ${err.message}`);
+      if (attempts >= maxAttempts) {
+        throw err;
+      }
+      await sleep(delay);
+    }
+  }
+};
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+const getReviewSummary = async (chapterId) => {
+  const reviewSummaryUrl = `https://read.qidian.com/ajax/chapterReview/reviewSummary?_csrfToken=${csrfToken}&bookId=${bookId}&chapterId=${chapterId}`;
+  const reviewSummary = await retryRequest(reviewSummaryUrl, { headers }).then(
+    (res) => res.data.data.list
+  );
+  
+  reviewSummary.sort((a, b) => a.segmentId - b.segmentId);
+  return reviewSummary.filter((e) => e.reviewNum !== 0);
+};
+
+
+
+
+
+
+
+
+const getCatalog = async (bid, start, total, lock,orbookName) => {
+  await assignmentGlobalVariables(bid,orbookName);
   const categoryUrl = `https://m.qidian.com/majax/book/category?bookId=${bookId}&_csrfToken=${csrfToken}`;
   const { data } = await got(categoryUrl, { headers })
   const { data : {bookName, vs} } = data
@@ -83,31 +132,37 @@ const getSlicesCatalog = (vs, start, total, lock) => {
   return catalogList.slice(-start);
 };
 
-const getReviewSummary = async (chapterId) => {
-  const reviewSummaryUrl = `https://read.qidian.com/ajax/chapterReview/reviewSummary?_csrfToken=${csrfToken}&bookId=${bookId}&chapterId=${chapterId}`;
-  const reviewSummary = await got(reviewSummaryUrl, { headers }).then(
-    (res) => res.data.data.list
-  );
-  reviewSummary.sort((a, b) => a.segmentId - b.segmentId);
-  return reviewSummary.filter((e) => e.reviewNum !== 0);
-};
+// const getReviewSummary = async (chapterId) => {
+//   const reviewSummaryUrl = `https://read.qidian.com/ajax/chapterReview/reviewSummary?_csrfToken=${csrfToken}&bookId=${bookId}&chapterId=${chapterId}`;
+//   const reviewSummary = await got(reviewSummaryUrl, { headers }).then(
+//     (res) => res.data.data.list
+//   );
+  
+//   reviewSummary.sort((a, b) => a.segmentId - b.segmentId);
+//   return reviewSummary.filter((e) => e.reviewNum !== 0);
+// };
 
-const assignmentGlobalVariables = async (bid) => {
+const assignmentGlobalVariables = async (bid,orbookName) => {
   bookId = bid;
+  bookInfo =  `${bid}_${orbookName}`;
   if (typeof (csrfToken) === "undefined") {
     csrfToken = await fetchCsrfToken();
   }
   headers = {
     Cookie: `_csrfToken=${csrfToken}`,
   };
-  path = Path.resolve(__dirname, `../${outputPaths}/${bookId}`);
+  path = Path.resolve(__dirname, `../${outputPaths}/${bookInfo}`);
 };
 // 获取 csrfToken
 const fetchCsrfToken = async () => {
+  await sleep(300);
   return await got(`https://m.qidian.com/book/${bookId}/catalog`).then(
     (res) => res.headers["set-cookie"].join("").match(/_csrfToken=(\S*);/)[1]
   );
 };
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 module.exports = {
   processChapterReview,

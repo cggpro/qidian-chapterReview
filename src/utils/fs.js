@@ -5,6 +5,7 @@ const yaml = require("js-yaml");
 const git = require('git-rev-sync');
 const { outputPaths, categoryPaths, readmePaths, gitBranch } = require("@/utils/config").value;
 const { logger, errorLogger } = require("@/utils/logger");
+const { log } = require("console");
 
 const yamltojson = () => {
   try {
@@ -26,7 +27,28 @@ const filePathisExist = async (filePath) => {
   });
 };
 
-//写入文件,判断路径是否存在，不存在则创建
+// 写入文件,判断路径是否存在，不存在则创建
+// const writeFile = async (path, out, name) => {
+//   fs.access(path, (err) => {
+//     if (err) {
+//       fs.mkdir(path, { recursive: true }, (err) => {
+//         if (err) throw err;
+//       });
+//     }
+//   });
+
+//   fs.writeFile(
+//     `${path}/${name}.md`,
+//     out.join("").replace(/,/g, ""),
+//     { flag: "w" },
+//     (err) => {
+//       err
+//         ? errorLogger.info(`${name} 写入失败！\n ${err}`)
+//         : logger.info(`${name} 写入成功！`);
+//     }
+//   );
+// };
+
 const writeFile = async (path, out, name) => {
   // 清理文件名中的非法字符
   const cleanName = name.replace(/[<>:"\/\\|?*]+/g, '-');
