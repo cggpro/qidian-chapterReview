@@ -28,23 +28,26 @@ const filePathisExist = async (filePath) => {
 
 //写入文件,判断路径是否存在，不存在则创建
 const writeFile = async (path, out, name) => {
-  fs.access(path, (err) => {
-    if (err) {
-      fs.mkdir(path, { recursive: true }, (err) => {
-        if (err) throw err;
-      });
+  // 清理文件名中的非法字符
+  const cleanName = name.replace(/[<>:"\/\\|?*]+/g, '-');
+  const fullPath = `${path}/${cleanName}.md`;
+
+  // 创建目录（如果不存在）
+  fs.mkdir(path, { recursive: true }, (mkdirErr) => {
+    if (mkdirErr) {
+      errorLogger.info(`创建目录失败: ${mkdirErr}`);
+      return;
     }
+
+    // 写入文件
+    fs.writeFile(fullPath, out.join("").replace(/,/g, ""), { flag: "w" }, (writeErr) => {
+      if (writeErr) {
+        errorLogger.info(`${cleanName} 写入失败！\n ${writeErr}`);
+      } else {
+        logger.info(`${cleanName} 写入成功！`);
+      }
+    });
   });
-  fs.writeFile(
-    `${path}/${name}.md`,
-    out.join("").replace(/,/g, ""),
-    { flag: "w" },
-    (err) => {
-      err
-        ? errorLogger.info(`${name} 写入失败！\n ${err}`)
-        : logger.info(`${name} 写入成功！`);
-    }
-  );
 };
 
 const generateCategory = async () => {

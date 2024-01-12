@@ -8,37 +8,46 @@ let bookId;
 let csrfToken;
 let headers;
 
+// const processChapterReview = async (chapterId, chapterName) => {
+//   const reviewSummary = await getReviewSummary(chapterId);
+//   const out = await Promise.all(
+//     reviewSummary.map(async (item) => {
+//       const chapterReviewUrl = "https://vipreader.qidian.com/ajax/chapterReview/reviewList";
+//       const paramsList = {
+//         bookId,
+//         page: 1,
+//         type: 2,
+//         chapterId,
+//         _csrfToken: csrfToken,
+//         pageSize: item.reviewNum,
+//         segmentId: item.segmentId,
+//       };
+//       let response;
+//       try {
+//         response = await got(chapterReviewUrl, { searchParams: new URLSearchParams(paramsList) }, { headers });
+//         const { data: { list } } = JSON.parse(response.body);
+//         const content = list.map((item) => `>--- ${item.content.trim()}<br>\n`);
+//         const quoteContent = [
+//           `\n[${item.segmentId}] ${list[0].quoteContent.trim()}\n`,
+//         ];
+//         return [...quoteContent, ...content];
+//       } catch (err) {
+//         const msg = `---bookId: ${bookId} chapterName: ${chapterName}\n---response: ${response.body}\n`;
+//         errorLogger.info(`${err} \n ${msg}`);
+//         return `\n[${item.segmentId}] invalid list\n`;
+//       }
+//     })
+//   );
+//   writeFile(path, out, chapterName);
+// };
 const processChapterReview = async (chapterId, chapterName) => {
   const reviewSummary = await getReviewSummary(chapterId);
-  const out = await Promise.all(
-    reviewSummary.map(async (item) => {
-      const chapterReviewUrl = "https://vipreader.qidian.com/ajax/chapterReview/reviewList";
-      const paramsList = {
-        bookId,
-        page: 1,
-        type: 2,
-        chapterId,
-        _csrfToken: csrfToken,
-        pageSize: item.reviewNum,
-        segmentId: item.segmentId,
-      };
-      let response;
-      try {
-        response = await got(chapterReviewUrl, { searchParams: new URLSearchParams(paramsList) }, { headers });
-        const { data: { list } } = JSON.parse(response.body);
-        const content = list.map((item) => `>--- ${item.content.trim()}<br>\n`);
-        const quoteContent = [
-          `\n[${item.segmentId}] ${list[0].quoteContent.trim()}\n`,
-        ];
-        return [...quoteContent, ...content];
-      } catch (err) {
-        const msg = `---bookId: ${bookId} chapterName: ${chapterName}\n---response: ${response.body}\n`;
-        errorLogger.info(`${err} \n ${msg}`);
-        return `\n[${item.segmentId}] invalid list\n`;
-      }
-    })
-  );
-  writeFile(path, out, chapterName);
+
+  const totalReviewNum = reviewSummary.reduce((sum, item) => sum + item.reviewNum, 0);
+  const outputArray = [`Chapter ${chapterId} (${chapterName}): Total Reviews - ${totalReviewNum}\n`];
+
+  // await sleep(1000); // 等待一秒
+  await writeFile(path, outputArray, chapterName);
 };
 
 const getCatalog = async (bid, start, total, lock) => {
