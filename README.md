@@ -3,8 +3,15 @@
 
 
 ### 使用方法
+```
 cp config.example.yaml config.yaml
 npm install
 cd src
 node index.js
+cd python_file
+python3 one.py
+python3 two.py
+python3 three.py
+
+```
 
